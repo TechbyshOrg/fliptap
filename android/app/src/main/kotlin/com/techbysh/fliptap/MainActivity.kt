@@ -1,4 +1,4 @@
-package com.example.flipper_counter
+package com.techbysh.fliptap
 
 import io.flutter.embedding.android.FlutterActivity
 

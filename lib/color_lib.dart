@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const primary = Color(0xFF8A784E);       // Brown
-  static const accent = Color(0xFFD9CBA3);        // Light Beige (complementary)
-  static const background = Color(0xFFF5F5DC);    // Beige (neutral background)
-  static const text = Color(0xFF3E2C00);          // Dark Brown (for contrast)
-  static const button = Color(0xFFBFA76A);        // Muted Gold (harmonious)
-  static const shadow = Color(0xFFBDB6A3);        // Soft Gray-Brown Shadow
+  static const primary = Colors.black;
+  static const secondary = Colors.white;
+  static const background = Colors.white;
+  static const text = Colors.black;
+  static const darkText = Colors.black;
+  static const lightText = Colors.white;
+  static const fadeText = Colors.black26;      // Faded black
+  static const fadeTextDark = Colors.black38;  // Slightly less faded black
+  static const shadow = Colors.black12;        // Very light black for shadow
+  static const accent = Colors.black54;        // Medium faded black
+  static const button = Colors.black87;        // Almost black
+
+  // card colors
+  static const cardBackground = Colors.white;
+  static const cardShadow = Colors.black12;
+  static const cardText = Colors.black;
+  static const cardFadeText = Colors.black45;
+  static const cardBorder = Colors.black26;
 }

@@ -44,7 +44,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppColors.background,
         title: const Text('Settings'),
         centerTitle: true,
         foregroundColor: AppColors.text,
@@ -56,14 +56,14 @@ class _SettingsPageState extends State<SettingsPage> {
             value: _shakeEnabled,
             onChanged: _toggleShake,
             activeColor: AppColors.button,
-            tileColor: AppColors.accent.withOpacity(0.2),
+            tileColor: AppColors.background,
           ),
           SwitchListTile(
             title: const Text('Enable Vibration'),
             value: _vibrationEnabled,
             onChanged: _toggleVibration,
             activeColor: AppColors.button,
-            tileColor: AppColors.accent.withOpacity(0.2),
+            tileColor: AppColors.background,
           ),
         ],
       ),

@@ -103,99 +103,133 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Wibble Counter'),
+        title: const Text('FlipTap'),
         titleTextStyle: const TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.bold,
-          color: Colors.white,
+          color: AppColors.darkText,
           fontFamily: 'RobotoMono',
         ),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.text,
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.settings_outlined),
             onPressed: _goToSettings,
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: _incrementCounter,
-              child: Center(
-                child: Container(
-                  height: 300,
-                  width: 300,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.shadow,
-                        blurRadius: 10,
-                        offset: const Offset(0, 6),
-                      )
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 110),
-                      Center(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 100),
-                          child: Text(
-                            '$_counter',
-                            key: ValueKey<int>(_counter),
-                            style: const TextStyle(
-                              fontSize: 48,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(
+                  children: [
+                    // Your tappable counter card
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _incrementCounter,
+                        child: Center(
+                          child: Container(
+                            height: 400,
+                            width: 300,
+                            decoration: BoxDecoration(
+                              color: AppColors.cardBackground,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: AppColors.cardBorder,
+                                width: 1,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 160),
+                                Center(
+                                  child: AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 100),
+                                    child: Text(
+                                      '$_counter',
+                                      key: ValueKey<int>(_counter),
+                                      style: const TextStyle(
+                                        fontSize: 48,
+                                        color: AppColors.cardText,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 100),
+                                const Text(
+                                  'Tap to Increment',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.cardFadeText,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 60),
-                      const Text(
-                        'Tap to Increment',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Colors.white60,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+
+                    // Action buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _smallButton(Icons.remove, _decrementCounter),
+                        const SizedBox(width: 20),
+                        _smallButton(Icons.refresh, _resetCounter),
+                      ],
+                    ),
+
+                    const SizedBox(height: 80),
+                  ],
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _smallButton(Icons.remove, _decrementCounter),
-              const SizedBox(width: 20),
-              _smallButton(Icons.refresh, _resetCounter),
-            ],
-          ),
-          const SizedBox(height: 40),
-        ],
+          );
+        },
       ),
     );
+
   }
 
   Widget _smallButton(IconData icon, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    return SizedBox(
+      width: 100,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.background,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          elevation: 0,
+          side: BorderSide(color: AppColors.primary, width: 1),
+        ),
+        child: Icon(
+          icon,
+          color: AppColors.darkText,
+          size: 20,
+          // Use shadows to simulate a thicker stroke
+          shadows: [
+            Shadow(
+              blurRadius: 0,
+              color: AppColors.primary,
+              offset: Offset(0, 0),
+            ),
+            Shadow(
+              blurRadius: 2,
+              color: AppColors.primary,
+              offset: Offset(0, 0),
+            ),
+          ],
+        ),
       ),
-      child: Icon(icon, color: Colors.white),
     );
   }
 }
