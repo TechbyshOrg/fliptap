@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="flipper_counter"
+        android:label="Fliptap"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

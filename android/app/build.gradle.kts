@@ -8,30 +8,32 @@ plugins {
 import java.util.Properties
 import java.io.FileInputStream
 
+val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
-val keystoreProperties = Properties().apply {
-    load(FileInputStream(keystorePropertiesFile))
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
     namespace = "com.techbysh.fliptap" // ✅ REQUIRED in AGP 8+
-
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.techbysh.fliptap"
-        minSdk = 21
-        targetSdk = 34
-        versionCode = 2
+        minSdk = flutter.minSdkVersion
+        targetSdk = 36
+        versionCode = 4
         versionName = "1.0"
     }
 
     signingConfigs {
         create("release") {
-            storeFile = file(keystoreProperties["storeFile"] as String)
-            storePassword = keystoreProperties["storePassword"] as String
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
+            if (keystoreProperties.isNotEmpty()) {
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
         }
     }
 
@@ -39,9 +41,12 @@ android {
         getByName("release") {
             isMinifyEnabled = false
             androidResources {
-                isShrinkResources = false  // ✅ CORRECT Kotlin DSL usage
+                isShrinkResources = false // ✅ Kotlin DSL
             }
             signingConfig = signingConfigs.getByName("release")
+        }
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("release") // ✅ avoids "unsigned" error in debug
         }
     }
 
@@ -54,8 +59,6 @@ android {
         jvmTarget = "17"
     }
 }
-
-
 
 flutter {
     source = "../.."

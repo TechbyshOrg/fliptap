@@ -1,4 +1,4 @@
-name: fliptap
+name: Fliptap
 description: "A simple and intuitive counter app with motion and touch controls. Increment the counter by flipping your device, shaking it, or tapping the screen. Includes smooth haptic feedback for an enhanced user experience. Perfect for tracking repetitions, scores, habits, and more."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -34,7 +34,7 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  sensors_plus: ^6.1.1
+  sensors_plus: ^7.0.0
   shared_preferences: ^2.2.2
 
 dev_dependencies:
@@ -47,12 +47,14 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
-  flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.14.4
 
 flutter_launcher_icons:
   android: true
   ios: true
   image_path: "lib/assets/icon/app_icon.png"
+  adaptive_icon_background: "#ffffff" # or a hex color / image
+  adaptive_icon_foreground: "lib/assets/icon/app_icon.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
