@@ -1,9 +1,14 @@
+import 'dart:isolate';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'settings_page.dart';
 import 'color_lib.dart';
+
+const String kMainPortName = 'main_counter_port';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,40 +17,70 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _counter = 0;
   bool _shakeEnabled = true;
   bool _vibrationEnabled = true;
+  bool _overlayEnabled = true;
   bool _flipped = false;
+
+  late ReceivePort _receivePort;
+
+  static const _channel = MethodChannel('com.techbysh.fliptap/overlay');
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadPreferences();
+    _setupMainPort();
+    _recoverFromKill();
+  }
+
+  void _setupMainPort() {
+    _receivePort = ReceivePort();
+    IsolateNameServer.removePortNameMapping(kMainPortName);
+    IsolateNameServer.registerPortWithName(
+      _receivePort.sendPort,
+      kMainPortName,
+    );
+    _receivePort.listen((message) {
+      if (message is int) {
+        // ✅ Update counter immediately when overlay sends a new value
+        setState(() => _counter = message);
+        // ✅ Also persist it so SharedPreferences stays in sync
+        _persistCounter(message);
+      }
+    });
   }
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
-    _counter = prefs.getInt('counter') ?? 0;
-    _shakeEnabled = prefs.getBool('shakeEnabled') ?? true;
-    _vibrationEnabled = prefs.getBool('vibrationEnabled') ?? true;
+    // ✅ Force reload from disk every time
+    await prefs.reload();
+    setState(() {
+      _counter = prefs.getInt('counter') ?? 0;
+      _shakeEnabled = prefs.getBool('shakeEnabled') ?? true;
+      _vibrationEnabled = prefs.getBool('vibrationEnabled') ?? true;
+      _overlayEnabled = prefs.getBool('overlayEnabled') ?? true;
+    });
 
-    setState(() {}); // Update UI
-
-    // ✅ Start accelerometer stream after preferences are loaded
     accelerometerEventStream().listen(_handleFlip);
   }
 
-  Future<void> _saveCounter() async {
+  // ✅ Separated counter persist so overlay port listener can call it too
+  Future<void> _persistCounter(int value) async {
     final prefs = await SharedPreferences.getInstance();
-    prefs.setInt('counter', _counter);
+    await prefs.setInt('counter', value);
+  }
+
+  Future<void> _saveCounter() async {
+    await _persistCounter(_counter);
   }
 
   void _handleFlip(AccelerometerEvent event) {
     if (!_shakeEnabled) return;
-
-    double z = event.z;
-
+    final z = event.z;
     if (!_flipped && z < -7) {
       _flipped = true;
       _incrementCounter();
@@ -55,15 +90,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
+    setState(() => _counter++);
     _saveCounter();
-
-    if (_vibrationEnabled) {
-      HapticFeedback.lightImpact();
-      debugPrint('Vibrating: lightImpact');
-    }
+    _pushCounterToOverlay();
+    if (_vibrationEnabled) HapticFeedback.lightImpact();
   }
 
   void _decrementCounter() {
@@ -71,22 +101,97 @@ class _HomePageState extends State<HomePage> {
       if (_counter > 0) _counter--;
     });
     _saveCounter();
-
-    if (_vibrationEnabled) {
-      HapticFeedback.selectionClick();
-      debugPrint('Vibrating: selectionClick');
-    }
+    _pushCounterToOverlay();
+    if (_vibrationEnabled) HapticFeedback.selectionClick();
   }
 
   void _resetCounter() {
-    setState(() {
-      _counter = 0;
-    });
+    setState(() => _counter = 0);
     _saveCounter();
+    _pushCounterToOverlay();
+    if (_vibrationEnabled) HapticFeedback.heavyImpact();
+  }
 
-    if (_vibrationEnabled) {
-      HapticFeedback.heavyImpact();
-      debugPrint('Vibrating: heavyImpact');
+  void _pushCounterToOverlay() {
+    final overlayPort =
+        IsolateNameServer.lookupPortByName('overlay_counter_port');
+    overlayPort?.send(_counter);
+    FlutterOverlayWindow.shareData(_counter);
+  }
+
+  // ── Overlay lifecycle ────────────────────────────────────────────────────
+
+  Future<void> _showOverlay() async {
+    if (!_overlayEnabled) return;
+
+    final hasPermission = await FlutterOverlayWindow.isPermissionGranted();
+    if (!hasPermission) {
+      await FlutterOverlayWindow.requestPermission();
+      return;
+    }
+
+    final isActive = await FlutterOverlayWindow.isActive();
+    if (isActive) return;
+
+    await FlutterOverlayWindow.showOverlay(
+      enableDrag: true,
+      overlayTitle: 'FlipTap Counter',
+      overlayContent: 'Counter overlay active',
+      flag: OverlayFlag.defaultFlag,
+      visibility: NotificationVisibility.visibilityPublic,
+      positionGravity: PositionGravity.none,
+      width: 400,
+      height: 200,
+      startPosition: const OverlayPosition(0, -200),
+    );
+
+    await _channel.invokeMethod('setOverlayShowing', {'showing': true});
+
+    await Future.delayed(const Duration(milliseconds: 300));
+    _pushCounterToOverlay();
+  }
+
+  Future<void> _closeOverlay() async {
+    final isActive = await FlutterOverlayWindow.isActive();
+    if (isActive) {
+      await FlutterOverlayWindow.closeOverlay();
+    }
+    await _channel.invokeMethod('setOverlayShowing', {'showing': false});
+  }
+
+  Future<void> _recoverFromKill() async {
+    try {
+      final wasShowing =
+          await _channel.invokeMethod<bool>('wasOverlayShowingOnKill') ?? false;
+      if (wasShowing) {
+        await _closeOverlay();
+      }
+    } catch (_) {}
+  }
+
+  // ── App lifecycle ────────────────────────────────────────────────────────
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    switch (state) {
+      case AppLifecycleState.paused:
+        if (_overlayEnabled) await _showOverlay();
+        break;
+
+      case AppLifecycleState.resumed:
+        // ✅ First close overlay, then wait briefly, then reload from prefs
+        // This gives the overlay time to save its latest counter value
+        await _closeOverlay();
+        await Future.delayed(const Duration(milliseconds: 150));
+        await _loadPreferences();
+        break;
+
+      case AppLifecycleState.detached:
+        await _closeOverlay();
+        break;
+
+      default:
+        break;
     }
   }
 
@@ -95,7 +200,15 @@ class _HomePageState extends State<HomePage> {
       context,
       MaterialPageRoute(builder: (_) => const SettingsPage()),
     );
-    _loadPreferences(); // Reload after settings update
+    _loadPreferences();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _receivePort.close();
+    IsolateNameServer.removePortNameMapping(kMainPortName);
+    super.dispose();
   }
 
   @override
@@ -128,7 +241,6 @@ class _HomePageState extends State<HomePage> {
               child: IntrinsicHeight(
                 child: Column(
                   children: [
-                    // Your tappable counter card
                     Expanded(
                       child: GestureDetector(
                         onTap: _incrementCounter,
@@ -176,8 +288,6 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                     ),
-
-                    // Action buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -186,7 +296,6 @@ class _HomePageState extends State<HomePage> {
                         _smallButton(Icons.refresh, _resetCounter),
                       ],
                     ),
-
                     const SizedBox(height: 80),
                   ],
                 ),
@@ -196,7 +305,6 @@ class _HomePageState extends State<HomePage> {
         },
       ),
     );
-
   }
 
   Widget _smallButton(IconData icon, VoidCallback onTap) {
@@ -206,7 +314,9 @@ class _HomePageState extends State<HomePage> {
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.background,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           elevation: 0,
           side: BorderSide(color: AppColors.primary, width: 1),
@@ -215,8 +325,7 @@ class _HomePageState extends State<HomePage> {
           icon,
           color: AppColors.darkText,
           size: 20,
-          // Use shadows to simulate a thicker stroke
-          shadows: [
+          shadows: const [
             Shadow(
               blurRadius: 0,
               color: AppColors.primary,
