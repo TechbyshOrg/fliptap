@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'color_lib.dart';
+import 'main.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -47,7 +49,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _toggleOverlay(bool value) async {
     if (value && !_overlayPermissionGranted) {
-      // Request permission first
       await FlutterOverlayWindow.requestPermission();
       final granted = await FlutterOverlayWindow.isPermissionGranted();
       if (!granted) {
@@ -63,42 +64,44 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showPermissionDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: AppColors.cardBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
+        backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
           'Permission Required',
           style: TextStyle(
-            color: AppColors.darkText,
             fontWeight: FontWeight.bold,
+            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
           ),
         ),
-        content: const Text(
+        content: Text(
           'To show the overlay popup when the app is minimised, please grant '
           '"Display over other apps" permission in Settings.',
-          style: TextStyle(color: AppColors.text),
+          style: TextStyle(
+            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
-              'OK',
-              style: TextStyle(color: AppColors.primary),
+              'Cancel',
+              style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold),
             ),
           ),
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
               await FlutterOverlayWindow.requestPermission();
-              final granted =
-                  await FlutterOverlayWindow.isPermissionGranted();
+              final granted = await FlutterOverlayWindow.isPermissionGranted();
               setState(() => _overlayPermissionGranted = granted);
             },
             child: const Text(
               'Open Settings',
-              style: TextStyle(color: AppColors.primary),
+              style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -108,120 +111,259 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final repo = CounterProvider.of(context);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
-        title: const Text(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
           'Settings',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: AppColors.darkText,
+            fontSize: 22,
+            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
           ),
         ),
         centerTitle: true,
-        foregroundColor: AppColors.text,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 18,
+            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         children: [
-          // ── Counter behaviour ───────────────────────────────────────────
-          _sectionHeader('Counter'),
-
-          SwitchListTile(
-            title: const Text(
-              'Flip to Increment',
-              style: TextStyle(color: AppColors.darkText),
+          _sectionHeader('GESTURES & FEEDBACK', isDark),
+          _buildSettingsCard([
+            _buildSwitchTile(
+              title: 'Flip to Increment',
+              subtitle: 'Flip phone face-down to count',
+              icon: Icons.flip_to_back_rounded,
+              value: _shakeEnabled,
+              onChanged: _toggleShake,
+              isDark: isDark,
             ),
-            subtitle: const Text(
-              'Flip phone face-down to count',
-              style: TextStyle(color: AppColors.cardFadeText, fontSize: 12),
+            _buildDivider(isDark),
+            _buildSwitchTile(
+              title: 'Haptic Feedback',
+              subtitle: 'Vibrate on tap and sensor counts',
+              icon: Icons.vibration_rounded,
+              value: _vibrationEnabled,
+              onChanged: _toggleVibration,
+              isDark: isDark,
             ),
-            value: _shakeEnabled,
-            onChanged: _toggleShake,
-            activeColor: AppColors.button,
-            tileColor: AppColors.cardBackground,
-          ),
+          ], isDark),
 
-          SwitchListTile(
-            title: const Text(
-              'Vibration Feedback',
-              style: TextStyle(color: AppColors.darkText),
+          const SizedBox(height: 24),
+
+          _sectionHeader('APP THEME', isDark),
+          _buildSettingsCard([
+            _buildThemeOption(
+              context: context,
+              title: 'System Default',
+              mode: ThemeMode.system,
+              currentMode: repo.themeMode,
+              icon: Icons.brightness_auto_rounded,
+              isDark: isDark,
             ),
-            subtitle: const Text(
-              'Haptic feedback on tap / flip',
-              style: TextStyle(color: AppColors.cardFadeText, fontSize: 12),
+            _buildDivider(isDark),
+            _buildThemeOption(
+              context: context,
+              title: 'Light Mode',
+              mode: ThemeMode.light,
+              currentMode: repo.themeMode,
+              icon: Icons.light_mode_rounded,
+              isDark: isDark,
             ),
-            value: _vibrationEnabled,
-            onChanged: _toggleVibration,
-            activeColor: AppColors.button,
-            tileColor: AppColors.cardBackground,
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Overlay ─────────────────────────────────────────────────────
-          _sectionHeader('Overlay Popup'),
-
-          SwitchListTile(
-            title: const Text(
-              'Show Overlay When Minimised',
-              style: TextStyle(color: AppColors.darkText),
+            _buildDivider(isDark),
+            _buildThemeOption(
+              context: context,
+              title: 'Dark Mode',
+              mode: ThemeMode.dark,
+              currentMode: repo.themeMode,
+              icon: Icons.dark_mode_rounded,
+              isDark: isDark,
             ),
-            subtitle: Text(
-              _overlayPermissionGranted
-                  ? 'Floating counter shows over other apps'
-                  : 'Permission not granted — tap to request',
-              style: TextStyle(
-                color: _overlayPermissionGranted
-                    ? AppColors.cardFadeText
-                    : Colors.orange,
-                fontSize: 12,
-              ),
-            ),
-            value: _overlayEnabled,
-            onChanged: _toggleOverlay,
-            activeColor: AppColors.button,
-            tileColor: AppColors.cardBackground,
-          ),
+          ], isDark),
 
-          if (!_overlayPermissionGranted)
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: TextButton.icon(
-                onPressed: () async {
+          const SizedBox(height: 24),
+
+          _sectionHeader('BACKGROUND OVERLAY', isDark),
+          _buildSettingsCard([
+            _buildSwitchTile(
+              title: 'Overlay When Minimised',
+              subtitle: _overlayPermissionGranted
+                  ? 'Floating widget displays over other apps'
+                  : 'Requires permission - tap to enable',
+              icon: Icons.picture_in_picture_alt_rounded,
+              value: _overlayEnabled,
+              onChanged: _toggleOverlay,
+              isDark: isDark,
+              textColor: _overlayPermissionGranted ? null : Colors.orange,
+            ),
+            if (!_overlayPermissionGranted) ...[
+              _buildDivider(isDark),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: const Icon(Icons.security_rounded, color: AppColors.accent),
+                title: Text(
+                  'Grant System Permission',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                  ),
+                ),
+                subtitle: Text(
+                  'Allows display over other apps',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                  ),
+                ),
+                trailing: Icon(
+                  Icons.open_in_new_rounded,
+                  size: 16,
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                ),
+                onTap: () async {
                   await FlutterOverlayWindow.requestPermission();
-                  final granted =
-                      await FlutterOverlayWindow.isPermissionGranted();
+                  final granted = await FlutterOverlayWindow.isPermissionGranted();
                   setState(() => _overlayPermissionGranted = granted);
                 },
-                icon: const Icon(Icons.open_in_new,
-                    color: AppColors.primary, size: 16),
-                label: const Text(
-                  'Grant "Display over other apps" permission',
-                  style: TextStyle(color: AppColors.primary, fontSize: 13),
-                ),
               ),
-            ),
+            ]
+          ], isDark),
 
           const SizedBox(height: 32),
+          
+          Center(
+            child: Text(
+              'fliptap v1.2.0',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _sectionHeader(String title) {
+  Widget _sectionHeader(String title, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+      padding: const EdgeInsets.only(left: 12, bottom: 8),
       child: Text(
-        title.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: AppColors.primary,
-          letterSpacing: 1.2,
+        title,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+          letterSpacing: 1.0,
         ),
       ),
+    );
+  }
+
+  Widget _buildSettingsCard(List<Widget> children, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Column(
+          children: children,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required bool isDark,
+    Color? textColor,
+  }) {
+    return SwitchListTile(
+      value: value,
+      onChanged: onChanged,
+      secondary: Icon(
+        icon,
+        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.bold,
+          color: textColor ?? (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 12,
+          color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider(bool isDark) {
+    return Divider(
+      height: 1,
+      thickness: 1,
+      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+    );
+  }
+
+  Widget _buildThemeOption({
+    required BuildContext context,
+    required String title,
+    required ThemeMode mode,
+    required ThemeMode currentMode,
+    required IconData icon,
+    required bool isDark,
+  }) {
+    final isSelected = currentMode == mode;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Icon(
+        icon,
+        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+        ),
+      ),
+      trailing: isSelected
+          ? const Icon(Icons.check_rounded, color: AppColors.accent)
+          : null,
+      onTap: () {
+        CounterProvider.of(context).setThemeMode(mode);
+      },
     );
   }
 }
