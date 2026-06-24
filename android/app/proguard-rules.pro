@@ -8,3 +8,7 @@
 
 # Keep application classes
 -keep class com.techbysh.fliptap.** { *; }
+
+# Suppress warnings for missing Play Store Split/Deferred Component dependencies referenced by Flutter Engine
+-dontwarn com.google.android.play.core.**
+
