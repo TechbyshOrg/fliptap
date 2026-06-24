@@ -246,7 +246,7 @@ class _SettingsPageState extends State<SettingsPage> {
           
           Center(
             child: Text(
-              'fliptap v1.2.0',
+              'fliptap v1.3.0',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
